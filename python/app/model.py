@@ -108,13 +108,9 @@ class DeliveryModel:
             "code",
         ]
 
-        shots_to_deliver = self.shotgrid_connection.find(
-            "Shot", filters, columns
-        )
+        shots_to_deliver = self.shotgrid_connection.find("Shot", filters, columns)
 
-        self.shots_to_deliver = self.get_shots_information_list(
-            shots_to_deliver
-        )
+        self.shots_to_deliver = self.get_shots_information_list(shots_to_deliver)
         return self.shots_to_deliver
 
     def get_latest_shot_version(self, shot_information: dict) -> dict:
@@ -143,16 +139,24 @@ class DeliveryModel:
             }
         ]
 
-        return self.shotgrid_connection.find_one(
+        latest_shot_version = self.shotgrid_connection.find_one(
             "Version",
             filters,
             columns,
             sorting,
         )
 
-    def get_shot_version_published_file(
-        self, latest_shot_version: dict
-    ) -> dict:
+        if not latest_shot_version["published_files"]:
+            error_message = f"No published files found on the most recent version for sequence {shot_information['sequence']} shot {shot_information['shot']}. Are there any published files in this shot version? Playblasts from Maya have no EXRs for example and can't be delivered."
+            raise ValidationError(error_message)
+
+        if not latest_shot_version:
+            error_message = f"No versions found for sequence {shot_information['sequence']} shot {shot_information['shot']}. Are there any versions for this shot?"
+            raise ValidationError(error_message)
+
+        return latest_shot_version
+
+    def get_shot_version_published_file(self, latest_shot_version: dict) -> dict:
         """Gets the correct published files associates with this version.
 
         Args:
@@ -190,9 +194,7 @@ class DeliveryModel:
         ]
 
         columns = ["sg_projectcode"]
-        project = self.shotgrid_connection.find_one(
-            "Project", filters, columns
-        )
+        project = self.shotgrid_connection.find_one("Project", filters, columns)
 
         return project["sg_projectcode"]
 
@@ -215,9 +217,7 @@ class DeliveryModel:
             shot_information["shot"] = shot["code"]
             shot_information["id"] = shot["id"]
 
-            latest_shot_version = self.get_latest_shot_version(
-                shot_information
-            )
+            latest_shot_version = self.get_latest_shot_version(shot_information)
 
             shot_information["first_frame"] = (
                 latest_shot_version["sg_first_frame"]
@@ -231,15 +231,11 @@ class DeliveryModel:
                 else 0
             )
 
-            published_file = self.get_shot_version_published_file(
-                latest_shot_version
-            )
+            published_file = self.get_shot_version_published_file(latest_shot_version)
             shot_information["sequence_path"] = published_file["path"][
                 "local_path_windows"
             ]
-            shot_information["version_number"] = published_file[
-                "version_number"
-            ]
+            shot_information["version_number"] = published_file["version_number"]
             shot_information["project_code"] = self.get_project_code()
 
             shots_information_list.append(shot_information)
@@ -296,9 +292,7 @@ class DeliveryModel:
                 self.validate_all_frames_exist(shot)
                 successfully_validated_shots.append(shot)
                 self.logger.info("Validation passed.")
-                shot["validation_message"] = (
-                    "Initial validation checks passed!"
-                )
+                shot["validation_message"] = "Initial validation checks passed!"
                 show_validation_message(shot)
 
             except ValidationError as error_message:
@@ -323,11 +317,12 @@ class DeliveryModel:
             self.logger.error(
                 "Missing frame range data. Please check if first_frame and last_frame are set properly on the version info."
             )
-            error_message = "Shot version is missing frame range data. Was it published correctly?"
+            error_message = (
+                "Shot version is missing frame range data. Was it published correctly?"
+            )
             raise ValidationError(error_message)
 
         for frame in range(shot["first_frame"], shot["last_frame"]):
-
             try:
                 frame_file_path = Path(shot["sequence_path"] % frame)
             except TypeError as e:
@@ -339,9 +334,7 @@ class DeliveryModel:
 
             if not frame_file_path.is_file():
                 self.logger.error(f"Could not find file at {frame_file_path}.")
-                error_message = (
-                    f"Can't find frame {frame}. Does it exist on disk?"
-                )
+                error_message = f"Can't find frame {frame}. Does it exist on disk?"
                 raise ValidationError(error_message)
 
     def validate_filetype(self, shot: dict) -> None:
@@ -387,31 +380,23 @@ class DeliveryModel:
                 "version": shot["version_number"],
             }
 
-            delivery_path = Path(
-                delivery_template.apply_fields(template_fields)
-            )
+            delivery_path = Path(delivery_template.apply_fields(template_fields))
             delivery_folder = delivery_path.parent
 
             if not delivery_folder.is_dir():
-                self.logger.info(
-                    f"Creating folder for delivery {delivery_folder}."
-                )
+                self.logger.info(f"Creating folder for delivery {delivery_folder}.")
                 delivery_folder.mkdir(parents=True, exist_ok=True)
 
             for frame in range(shot["first_frame"], shot["last_frame"] + 1):
                 publish_file = Path(shot["sequence_path"] % frame)
-                delivery_file = delivery_path.with_name(
-                    delivery_path.name % frame
-                )
+                delivery_file = delivery_path.with_name(delivery_path.name % frame)
 
                 os.link(publish_file, delivery_file)
 
                 shot["frames_delivered"] = frame
                 update_progress_bars(shot)
 
-            self.logger.info(
-                f"Finished linking {publish_file} to {delivery_file}."
-            )
+            self.logger.info(f"Finished linking {publish_file} to {delivery_file}.")
 
             delivered_status = self._app.get_setting("delivered_status")
             data = {
