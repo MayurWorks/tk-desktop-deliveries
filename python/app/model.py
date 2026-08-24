@@ -29,9 +29,7 @@ import os
 from pathlib import Path
 from typing import Callable
 
-from sgtk.platform.qt_importer import QtImporter
-_qt_importer = QtImporter()
-QtCore = _qt_importer.QtCore
+from sgtk.platform.qt5 import QtCore
 
 
 class ValidationError(Exception):

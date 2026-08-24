@@ -25,11 +25,9 @@
 
 from pathlib import Path
 
-from sgtk.platform.qt_importer import QtImporter
-_qt_importer = QtImporter()
-QtCore = _qt_importer.QtCore
-QtWidgets = _qt_importer.QtWidgets
-QtSvg = getattr(_qt_importer, "QtSvg", None)
+import sgtk.platform.qt5 as _qt5
+from sgtk.platform.qt5 import QtCore, QtWidgets
+QtSvg = getattr(_qt5, "QtSvg", None)
 
 SCRIPT_LOCATION: Path = Path(__file__).parent
 
