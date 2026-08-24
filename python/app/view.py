@@ -25,7 +25,7 @@
 
 from pathlib import Path
 
-from sgtk.platform.qt5 import QtCore, QtSvg, QtWidgets
+from sgtk.platform.qt import QtCore, QtSvg, QtWidgets
 
 SCRIPT_LOCATION: Path = Path(__file__).parent
 
