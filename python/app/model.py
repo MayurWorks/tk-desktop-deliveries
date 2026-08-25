@@ -26,6 +26,8 @@
 from __future__ import annotations
 
 import os
+import platform
+import subprocess
 from pathlib import Path
 from typing import Callable
 
@@ -53,7 +55,9 @@ class DeliveryModel:
         self.shots_to_deliver = None
 
     def open_delivery_folder(self) -> None:
-        """Finds the correct path and opens the delivery folder."""
+        """Finds the correct path and opens the delivery folder in the
+        platform's file browser. os.startfile only exists on Windows,
+        so we need a per-platform way to open a folder."""
         template = self._app.get_template("delivery_folder")
 
         roots = self.context.sgtk.roots
@@ -62,7 +66,13 @@ class DeliveryModel:
         project_location = roots.get(root_name)
         delivery_location = template.apply_fields(project_location)
 
-        os.startfile(delivery_location)
+        system = platform.system()
+        if system == "Windows":
+            os.startfile(delivery_location)
+        elif system == "Darwin":
+            subprocess.Popen(["open", delivery_location])
+        else:
+            subprocess.Popen(["xdg-open", delivery_location])
 
     def load_shots(
         self,
