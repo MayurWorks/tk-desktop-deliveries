@@ -29,7 +29,20 @@ from sgtk.util.qt_importer import QtImporter
 _qt_importer = QtImporter(QtImporter.QT6)
 QtCore = _qt_importer.QtCore
 QtWidgets = _qt_importer.modules.get("QtWidgets") or _qt_importer.QtGui
-QtSvg = _qt_importer.modules.get("QtSvg")
+
+# QSvgWidget moved from QtSvg (Qt5 / PySide2) to QtSvgWidgets (Qt6 / PySide6).
+# Try both locations so this works whether we're running under Qt5 or Qt6,
+# and fall back to a plain text label if neither is available.
+try:
+    from PySide6.QtSvgWidgets import QSvgWidget
+except ImportError:
+    try:
+        from PySide2.QtSvg import QSvgWidget
+    except ImportError:
+        try:
+            from PySide6.QtSvg import QSvgWidget
+        except ImportError:
+            QSvgWidget = None
 
 SCRIPT_LOCATION: Path = Path(__file__).parent
 
@@ -152,8 +165,8 @@ class DeliveryView:
         loading_widget_layout.setAlignment(QtCore.Qt.AlignCenter)
         self.loading_widget.setLayout(loading_widget_layout)
 
-        if QtSvg is not None:
-            loading_spinner = QtSvg.QSvgWidget(
+        if QSvgWidget is not None:
+            loading_spinner = QSvgWidget(
                 str(
                     SCRIPT_LOCATION / "../.." / "resources" / "loading_spinner.svg"
                 )
