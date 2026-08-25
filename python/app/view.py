@@ -25,9 +25,11 @@
 
 from pathlib import Path
 
-import sgtk.platform.qt5 as _qt5
-from sgtk.platform.qt5 import QtCore, QtWidgets
-QtSvg = getattr(_qt5, "QtSvg", None)
+from sgtk.util.qt_importer import QtImporter
+_qt_importer = QtImporter(QtImporter.QT6)
+QtCore = _qt_importer.QtCore
+QtWidgets = _qt_importer.modules.get("QtWidgets") or _qt_importer.QtGui
+QtSvg = _qt_importer.modules.get("QtSvg")
 
 SCRIPT_LOCATION: Path = Path(__file__).parent
 
@@ -139,34 +141,34 @@ class DeliveryView:
 
         return buttons_widget
 
-        def get_loading_widget(self) -> QtWidgets.QWidget:
-            """Gets the loading widget for the layout.
+    def get_loading_widget(self) -> QtWidgets.QWidget:
+        """Gets the loading widget for the layout.
 
-            Returns:
-                Widget containing loading widgets.
-            """
-            self.loading_widget = QtWidgets.QWidget()
-            loading_widget_layout = QtWidgets.QVBoxLayout()
-            loading_widget_layout.setAlignment(QtCore.Qt.AlignCenter)
-            self.loading_widget.setLayout(loading_widget_layout)
+        Returns:
+            Widget containing loading widgets.
+        """
+        self.loading_widget = QtWidgets.QWidget()
+        loading_widget_layout = QtWidgets.QVBoxLayout()
+        loading_widget_layout.setAlignment(QtCore.Qt.AlignCenter)
+        self.loading_widget.setLayout(loading_widget_layout)
 
-            if QtSvg is not None:
-                loading_spinner = QtSvg.QSvgWidget(
-                    str(
-                        SCRIPT_LOCATION / "../.." / "resources" / "loading_spinner.svg"
-                    )
+        if QtSvg is not None:
+            loading_spinner = QtSvg.QSvgWidget(
+                str(
+                    SCRIPT_LOCATION / "../.." / "resources" / "loading_spinner.svg"
                 )
-                loading_spinner.setFixedSize(100, 100)
-            else:
-                loading_spinner = QtWidgets.QLabel("Loading...")
-                loading_spinner.setFixedSize(100, 100)
-                loading_spinner.setAlignment(QtCore.Qt.AlignCenter)
-
-            loading_widget_layout.addWidget(
-                loading_spinner, 0, QtCore.Qt.AlignHCenter
             )
+            loading_spinner.setFixedSize(100, 100)
+        else:
+            loading_spinner = QtWidgets.QLabel("Loading...")
+            loading_spinner.setFixedSize(100, 100)
+            loading_spinner.setAlignment(QtCore.Qt.AlignCenter)
 
-            return self.loading_widget
+        loading_widget_layout.addWidget(
+            loading_spinner, 0, QtCore.Qt.AlignHCenter
+        )
+
+        return self.loading_widget
 
     def get_shot_widget(self, shot: dict) -> QtWidgets.QWidget:
         """Gets the shot widget for the layout. It also stores this

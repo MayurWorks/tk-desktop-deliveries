@@ -23,7 +23,9 @@
 """Controller for delivery tool, written by Mervin van Brakel 2024"""
 
 import sgtk
-from sgtk.platform.qt5 import QtWidgets
+from sgtk.util.qt_importer import QtImporter
+_qt_importer = QtImporter(QtImporter.QT6)
+QtWidgets = _qt_importer.modules.get("QtWidgets") or _qt_importer.QtGui
 
 from . import model, view
 
