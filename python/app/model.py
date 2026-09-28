@@ -244,9 +244,22 @@ class DeliveryModel:
             )
 
             published_file = self.get_shot_version_published_file(latest_shot_version)
-            shot_information["sequence_path"] = published_file["path"][
-                "local_path_windows"
-            ]
+
+            # PublishedFile.path is a ShotGrid "local storage" field: it always
+            # contains local_path_windows/local_path_linux/local_path_mac
+            # regardless of which OS wrote the record, so we must pick the one
+            # matching the machine this app is actually running on. Using
+            # local_path_windows unconditionally broke delivery on Linux the
+            # first time it was exercised end-to-end.
+            system = platform.system()
+            if system == "Windows":
+                path_field = "local_path_windows"
+            elif system == "Darwin":
+                path_field = "local_path_mac"
+            else:
+                path_field = "local_path_linux"
+
+            shot_information["sequence_path"] = published_file["path"][path_field]
             shot_information["version_number"] = published_file["version_number"]
             shot_information["project_code"] = self.get_project_code()
 
