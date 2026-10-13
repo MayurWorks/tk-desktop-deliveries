@@ -31,6 +31,7 @@ import subprocess
 from pathlib import Path
 from typing import Callable
 
+from . import manifest
 from sgtk.util.qt_importer import QtImporter
 _qt_importer = QtImporter(QtImporter.QT6)
 QtCore = _qt_importer.QtCore
@@ -412,16 +413,20 @@ class DeliveryModel:
                 self.logger.info(f"Creating folder for delivery {delivery_folder}.")
                 delivery_folder.mkdir(parents=True, exist_ok=True)
 
+            delivered_files = []
             for frame in range(shot["first_frame"], shot["last_frame"] + 1):
                 publish_file = Path(shot["sequence_path"] % frame)
                 delivery_file = delivery_path.with_name(delivery_path.name % frame)
 
                 os.link(publish_file, delivery_file)
+                delivered_files.append((publish_file, delivery_file))
 
                 shot["frames_delivered"] = frame
                 update_progress_bars(shot)
 
             self.logger.info(f"Finished linking {publish_file} to {delivery_file}.")
+
+            self._write_manifest(shot, delivery_folder, delivered_files)
 
             delivered_status = self._app.get_setting("delivered_status")
             data = {
@@ -447,6 +452,19 @@ class DeliveryModel:
                 "Unexpected error occurred while copying files, please check logs!"
             )
             show_validation_error(shot)
+
+
+    def _write_manifest(self, shot: dict, folder: Path, delivered_files: list) -> None:
+        """Write manifest + checksums. A failure here is logged but never
+        undoes a delivery that already succeeded."""
+        if not self._app.get_setting("write_manifest"):
+            return
+        algorithm = self._app.get_setting("checksum_algorithm") or "sha256"
+        try:
+            manifest.write_manifest(folder, shot, delivered_files, algorithm)
+            self.logger.info(f"Wrote delivery manifest to {folder}.")
+        except Exception as error:
+            self.logger.error(f"Could not write delivery manifest: {error}")
 
 
 class ExportShotsThread(QtCore.QThread):

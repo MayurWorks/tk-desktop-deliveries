@@ -45,6 +45,16 @@ configuration:
     default_value: "fin"
     description: Status to set the shot to if the shot has been delivered.
 
+  write_manifest:
+    type: bool
+    default_value: true
+    description: "Write <Shot>_v###_manifest.json and checksums.sha256 next to every delivered shot."
+
+  checksum_algorithm:
+    type: str
+    default_value: "sha256"
+    description: "Checksum for the manifest: sha256, md5 or none. sha256 also writes checksums.sha256 (verify with sha256sum -c)."
+
 
 # this app works in all engines - it does not contain
 # any host application specific commands
